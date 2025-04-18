@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Adoption System Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .action-panel {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .metric-card {
+            text-align: center;
+            padding: 15px;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .metric-label {
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">AI Adoption System</a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="action-panel">
+                    <h5>Actions</h5>
+                    
+                    <!-- Data Loading -->
+                    <div class="mb-3">
+                        <label class="form-label">Load Data</label>
+                        <div class="d-grid gap-2">
+                            <button id="loadSampleBtn" class="btn btn-outline-primary btn-sm">Load Sample Data</button>
+                            <input type="number" id="sampleSize" class="form-control form-control-sm" value="100" min="10" max="1000">
+                            <div class="small text-muted">or</div>
+                            <input type="file" id="dataFile" class="form-control form-control-sm">
+                            <button id="uploadFileBtn" class="btn btn-outline-primary btn-sm">Upload File</button>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Analysis Actions -->
+                    <div class="mb-3">
+                        <label class="form-label">Analysis</label>
+                        <div class="d-grid gap-2">
+                            <button id="calculateScoresBtn" class="btn btn-outline-primary btn-sm">Calculate Scores</button>
+                            <button id="segmentBtn" class="btn btn-outline-primary btn-sm">Segment Employees</button>
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text">Clusters</span>
+                                <input type="number" id="nClusters" class="form-control" value="4" min="2" max="8">
+                            </div>
+                            <button id="trendBtn" class="btn btn-outline-primary btn-sm">Show Adoption Trend</button>
+                            <button id="recommendBtn" class="btn btn-outline-primary btn-sm">Get Recommendations</button>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Export -->
+                    <div class="mb-3">
+                        <label class="form-label">Export</label>
+                        <div class="d-grid gap-2">
+                            <a id="exportBtn" href="/export_data" class="btn btn-outline-success btn-sm">Export Data (CSV)</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-9">
+                <!-- Key Metrics Row -->
+                <div class="row mb-4" id="metricsRow" style="display: none;">
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="metric-value" id="totalEmployees">0</div>
+                            <div class="metric-label">Employees</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="metric-value" id="avgAdoption">0%</div>
+                            <div class="metric-label">Avg. Adoption</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="metric-value" id="highResistance">0%</div>
+                            <div class="metric-label">High Resistance</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="metric-value" id="champions">0%</div>
+                            <div class="metric-label">AI Champions</div>
+                        </div>
+                    </div>
+                </div>
+            
+                <!-- Data Preview -->
+                <div class="card">
+                    <div class="card-header">
+                        Data Preview
+                    </div>
+                    <div class="card-body">
+                        <div id="dataPreview">
+                            <p class="text-muted text-center">No data loaded. Use the controls on the left to load data.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Segments Visualization -->
+                <div class="card" id="segmentsCard" style="display: none;">
+                    <div class="card-header">
+                        Employee Segments
+                    </div>
+                    <div class="card-body">
+                        <img id="segmentsImg" class="img-fluid" src="" alt="Employee Segments">
+                    </div>
+                </div>
+                
+                <!-- Trend Visualization -->
+                <div class="card" id="trendCard" style="display: none;">
+                    <div class="card-header">
+                        Adoption Trend Over Time
+                    </div>
+                    <div class="card-body">
+                        <img id="trendImg" class="img-fluid" src="" alt="Adoption Trend">
+                    </div>
+                </div>
+                
+                <!-- Recommendations -->
+                <div class="card" id="recommendationsCard" style="display: none;">
+                    <div class="card-header">
+                        Strategic Recommendations
+                    </div>
+                    <div class="card-body">
+                        <div id="recommendationsTable"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load Sample Data Button
+            document.getElementById('loadSampleBtn').addEventListener('click', function() {
+                const size = document.getElementById('sampleSize').value;
+                
+                fetch('/load_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `size=${size}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showDataPreview(data.preview);
+                        document.getElementById('totalEmployees').textContent = size;
+                        document.getElementById('metricsRow').style.display = 'flex';
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                });
+            });
+            
+            // Calculate Scores Button
+            document.getElementById('calculateScoresBtn').addEventListener('click', function() {
+                fetch('/calculate_scores', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Scores calculated successfully!');
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                });
+            });
+            
+            // Segment Employees Button
+            document.getElementById('segmentBtn').addEventListener('click', function() {
+                const nClusters = document.getElementById('nClusters').value;
+                
+                fetch('/segment_employees', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `n_clusters=${nClusters}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show segments visualization
+                        fetch('/visualize_segments')
+                        .then(response => response.json())
+                        .then(imgData => {
+                            if (imgData.success) {
+                                document.getElementById('segmentsImg').src = imgData.image;
+                                document.getElementById('segmentsCard').style.display = 'block';
+                                
+                                // Update metrics
+                                updateMetricsFromSegments(data.segments);
+                            }
+                        });
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                });
+            });
+            
+            // Show Trend Button
+            document.getElementById('trendBtn').addEventListener('click', function() {
+                fetch('/visualize_trend')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('trendImg').src = data.image;
+                        document.getElementById('trendCard').style.display = 'block';
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                });
+            });
+            
+            // Get Recommendations Button
+            document.getElementById('recommendBtn').addEventListener('click', function() {
+                fetch('/get_recommendations')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showRecommendations(data.recommendations);
+                        document.getElementById('recommendationsCard').style.display = 'block';
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                });
+            });
+            
+            // Helper function to show data preview
+            function showDataPreview(data) {
+                if (!data || data.length === 0) {
+                    document.getElementById('dataPreview').innerHTML = '<p class="text-muted text-center">No data available</p>';
+                    return;
+                }
+                
+                let table = '<div class="table-responsive"><table class="table table-sm table-striped">';
+                
+                // Headers
+                table += '<thead><tr>';
+                for (const key of Object.keys(data[0])) {
+                    table += `<th>${key}</th>`;
+                }
+                table += '</tr></thead>';
+                
+                // Body
+                table += '<tbody>';
+                for (const row of data) {
+                    table += '<tr>';
+                    for (const [key, value] of Object.entries(row)) {
+                        table += `<td>${value}</td>`;
+                    }
+                    table += '</tr>';
+                }
+                table += '</tbody></table></div>';
+                
+                document.getElementById('dataPreview').innerHTML = table;
+            }
+            
+            // Helper function to show recommendations
+            function showRecommendations(recommendations) {
+                if (!recommendations || recommendations.length === 0) {
+                    document.getElementById('recommendationsTable').innerHTML = '<p class="text-muted text-center">No recommendations available</p>';
+                    return;
+                }
+                
+                let table = '<div class="table-responsive"><table class="table table-sm">';
+                
+                // Headers
+                table += '<thead><tr>';
+                for (const key of Object.keys(recommendations[0])) {
+                    table += `<th>${key}</th>`;
+                }
+                table += '</tr></thead>';
+                
+                // Body
+                table += '<tbody>';
+                for (const row of recommendations) {
+                    table += '<tr>';
+                    for (const [key, value] of Object.entries(row)) {
+                        // Add badge for priority
+                        if (key === 'priority') {
+                            let badgeClass = 'bg-info';
+                            if (value === 'High') badgeClass = 'bg-danger';
+                            if (value === 'Medium') badgeClass = 'bg-warning';
+                            if (value === 'Low') badgeClass = 'bg-success';
+                            
+                            table += `<td><span class="badge ${badgeClass}">${value}</span></td>`;
+                        } else {
+                            table += `<td>${value}</td>`;
+                        }
+                    }
+                    table += '</tr>';
+                }
+                table += '</tbody></table></div>';
+                
+                document.getElementById('recommendationsTable').innerHTML = table;
+            }
+            
+            // Update metrics from segments data
+            function updateMetricsFromSegments(segments) {
+                // Calculate average adoption across all segments
+                let totalEmployees = 0;
+                let weightedAdoption = 0;
+                
+                for (const segment of segments) {
+                    totalEmployees += segment.count;
+                    weightedAdoption += segment.adoption_score * segment.count;
+                    
+                    // Update specific segment metrics
+                    if (segment.segment === 'High Resistance') {
+                        document.getElementById('highResistance').textContent = 
+                            Math.round((segment.count / totalEmployees) * 100) + '%';
+                    }
+                    
+                    if (segment.segment === 'AI Champions') {
+                        document.getElementById('champions').textContent = 
+                            Math.round((segment.count / totalEmployees) * 100) + '%';
+                    }
+                }
+                
+                const avgAdoption = Math.round(weightedAdoption / totalEmployees);
+                document.getElementById('avgAdoption').textContent = avgAdoption + '%';
+            }
+        });
+    </script>
+</body>
+</html>
